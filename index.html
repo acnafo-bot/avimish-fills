@@ -1,0 +1,312 @@
+{
+  "name": "נוכחות צהרון",
+  "short_name": "נוכחות",
+  "description": "מערכת נוכחות לצהרון",
+  "start_url": "/avimish-fills/",
+  "display": "standalone",
+  "background_color": "#FFF8F0",
+  "theme_color": "#FF6B6B",
+  "orientation": "portrait",
+  "lang": "he",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
+
+const CACHE = 'nokhut-v1';
+const ASSETS = ['/avimish-fills/', '/avimish-fills/index.html', '/avimish-fills/manifest.json'];
+
+self.addEventListener('install', e => {
+  e.waitUntil(
+    caches.open(CACHE).then(cache => cache.addAll(ASSETS))
+  );
+});
+
+self.addEventListener('fetch', e => {
+  e.respondWith(
+    caches.match(e.request).then(r => r || fetch(e.request))
+  );
+});
+
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#FF6B6B">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="נוכחות">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700;900&display=swap" rel="stylesheet">
+<title>נוכחות צהרון</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: 'Heebo', sans-serif; background: #FFF8F0; min-height: 100vh; overscroll-behavior: none; }
+header {
+  background: linear-gradient(135deg, #FF6B6B, #FF8E53);
+  padding: env(safe-area-inset-top, 16px) 16px 16px;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 16px);
+  text-align: center; color: white;
+  box-shadow: 0 4px 12px rgba(255,107,107,0.3);
+  position: sticky; top: 0; z-index: 10;
+}
+header h1 { font-size: 1.45rem; font-weight: 900; }
+header p { font-size: 0.8rem; opacity: 0.9; margin-top: 2px; }
+.container { max-width: 520px; margin: 0 auto; padding: 12px 14px 100px; }
+.card { background: white; border-radius: 18px; padding: 16px; margin-bottom: 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.07); }
+.card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.card-num { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 900; font-size: 0.9rem; flex-shrink: 0; }
+.card-title { font-size: 1rem; font-weight: 900; }
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.field label { display: block; font-size: 0.72rem; font-weight: 800; color: #888; margin-bottom: 4px; text-transform: uppercase; }
+input[type=text], input[type=tel] { width: 100%; padding: 10px 12px; border: 2px solid #E8E8E8; border-radius: 10px; font-family: 'Heebo', sans-serif; font-size: 0.92rem; font-weight: 600; color: #2D2D2D; outline: none; transition: border-color 0.2s; }
+input:focus { border-color: #4D96FF; }
+.stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.stat { border-radius: 12px; padding: 9px 6px; text-align: center; }
+.stat-num { font-size: 1.5rem; font-weight: 900; display: block; line-height: 1; }
+.stat-lbl { font-size: 0.65rem; font-weight: 800; margin-top: 2px; opacity: 0.8; }
+.quick-btns { display: flex; gap: 8px; margin-bottom: 12px; }
+.quick-btn { flex: 1; padding: 9px 8px; border: none; border-radius: 10px; font-family: 'Heebo', sans-serif; font-size: 0.8rem; font-weight: 800; cursor: pointer; color: white; transition: transform 0.1s; }
+.quick-btn:active { transform: scale(0.97); }
+.student-list { display: flex; flex-direction: column; gap: 7px; max-height: 360px; overflow-y: auto; }
+.student { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-radius: 13px; cursor: pointer; border: 2px solid transparent; transition: all 0.12s; user-select: none; }
+.student:active { transform: scale(0.98); }
+.student.present { background: #B9FBC0; border-color: #6BCB77; }
+.student.absent { background: #FFB3B3; border-color: #FF6B6B; }
+.student-name { font-size: 0.97rem; font-weight: 700; }
+.student-icon { font-size: 1.3rem; }
+.add-row { display: flex; gap: 8px; margin-top: 12px; }
+.add-row input { flex: 1; }
+.add-btn { padding: 10px 14px; border-radius: 10px; border: none; background: #6BCB77; color: white; font-weight: 800; font-family: 'Heebo', sans-serif; font-size: 0.88rem; cursor: pointer; }
+.message-preview { background: #E8F5E9; border: 2px solid #A5D6A7; border-radius: 12px; padding: 14px; font-size: 0.88rem; line-height: 1.75; font-weight: 600; white-space: pre-line; margin-bottom: 14px; color: #2D2D2D; }
+.btn { display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; padding: 13px 20px; border-radius: 50px; border: none; font-family: 'Heebo', sans-serif; font-size: 0.97rem; font-weight: 900; cursor: pointer; transition: transform 0.12s; margin-top: 8px; }
+.btn:active { transform: scale(0.97); }
+.btn-purple { background: #C77DFF; color: white; box-shadow: 0 4px 12px rgba(199,125,255,0.3); }
+.btn-share { background: #25D366; color: white; box-shadow: 0 4px 12px rgba(37,211,102,0.3); font-size: 1.05rem; }
+.btn-copy { background: #FFD93D; color: #333; }
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(30px); background: #2D2D2D; color: white; padding: 10px 20px; border-radius: 50px; font-weight: 700; font-size: 0.85rem; transition: all 0.3s; opacity: 0; z-index: 999; white-space: nowrap; pointer-events: none; }
+.toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+.install-banner { background: #4D96FF; color: white; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; font-size: 0.85rem; font-weight: 700; }
+.install-btn { background: white; color: #4D96FF; border: none; border-radius: 20px; padding: 6px 14px; font-weight: 800; font-size: 0.82rem; cursor: pointer; }
+.install-close { background: none; border: none; color: white; font-size: 1.1rem; cursor: pointer; padding: 0 4px; }
+</style>
+</head>
+<body>
+
+<div class="install-banner" id="install-banner" style="display:none">
+  <span>📱 שמור כאפליקציה על המסך</span>
+  <div style="display:flex;gap:8px;align-items:center">
+    <button class="install-btn" id="install-btn">התקן</button>
+    <button class="install-close" onclick="document.getElementById('install-banner').style.display='none'">✕</button>
+  </div>
+</div>
+
+<header>
+  <h1>🎒 נוכחות צהרון</h1>
+  <p id="date-str"></p>
+</header>
+
+<div class="container">
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-num" style="background:#FF6B6B">1</div>
+      <div class="card-title">פרטי הכיתה</div>
+    </div>
+    <div class="fields">
+      <div class="field">
+        <label>שם הכיתה</label>
+        <input type="text" id="class-name" value="ג2">
+      </div>
+      <div class="field">
+        <label>שם הקבוצה</label>
+        <input type="text" id="group-name" value="צהרון">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-num" style="background:#6BCB77">2</div>
+      <div class="card-title">סמן נוכחות</div>
+    </div>
+    <div class="stats">
+      <div class="stat" style="background:#EEF2FF">
+        <span class="stat-num" id="n-total" style="color:#4D96FF">27</span>
+        <div class="stat-lbl" style="color:#4D96FF">סה"כ</div>
+      </div>
+      <div class="stat" style="background:#B9FBC0">
+        <span class="stat-num" id="n-present" style="color:#2D7A36">27</span>
+        <div class="stat-lbl" style="color:#2D7A36">נוכחים ✅</div>
+      </div>
+      <div class="stat" style="background:#FFB3B3">
+        <span class="stat-num" id="n-absent" style="color:#C0392B">0</span>
+        <div class="stat-lbl" style="color:#C0392B">נעדרים ❌</div>
+      </div>
+    </div>
+    <div class="quick-btns">
+      <button class="quick-btn" style="background:#6BCB77" onclick="markAll(true)">✅ כולם נוכחים</button>
+      <button class="quick-btn" style="background:#FF6B6B" onclick="markAll(false)">❌ כולם נעדרים</button>
+    </div>
+    <div class="student-list" id="student-list"></div>
+    <div class="add-row">
+      <input type="text" id="new-name" placeholder="הוסף ילד ידנית...">
+      <button class="add-btn" onclick="addStudent()">+ הוסף</button>
+    </div>
+    <button class="btn btn-purple" onclick="showSummary()">📋 סיכום ושיתוף ←</button>
+  </div>
+
+  <div class="card" id="summary-card" style="display:none">
+    <div class="card-header">
+      <div class="card-num" style="background:#C77DFF">3</div>
+      <div class="card-title">שיתוף לוואטסאפ</div>
+    </div>
+    <div class="message-preview" id="msg-preview"></div>
+    <button class="btn btn-share" onclick="shareMsg()">📤 שתף לקבוצת וואטסאפ</button>
+    <button class="btn btn-copy" onclick="copyMsg()">📋 העתק הודעה</button>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const DAYS = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+const now = new Date();
+const dateStr = `יום ${DAYS[now.getDay()]}, ${now.toLocaleDateString('he-IL')}`;
+document.getElementById('date-str').textContent = dateStr;
+
+let students = [
+  "אופיר גבע","אורן שקד","אולגה איצקוביץ'","איימי גלברג שריג",
+  "איתן צ'נגרי","אלכס טוויסטר","אלמה נגר","אמילי קלוגמן",
+  "אריאל נהור","אריאל פילהבר","אסף שושני","בן מוטיל",
+  "דניאל בירגר","דניאלה צדוק","הראל סברניק טף","לביא קלומידי",
+  "מיכאל אשהר","מיקה לנדה סבן","נוהר כהן","עברי חזות זריהן",
+  "עומר בן שושן","רני ברעם","רוני רוסו","ריו ארנון",
+  "ריין חוגג","רפאל מור","תום פרץ"
+].map(name => ({ name, present: true }));
+
+function render() {
+  const list = document.getElementById('student-list');
+  list.innerHTML = '';
+  let present = 0, absent = 0;
+  students.forEach((s, i) => {
+    if (s.present) present++; else absent++;
+    const div = document.createElement('div');
+    div.className = `student ${s.present ? 'present' : 'absent'}`;
+    div.innerHTML = `<span class="student-name">${s.name}</span><span class="student-icon">${s.present ? '✅' : '❌'}</span>`;
+    div.onclick = () => { students[i].present = !students[i].present; render(); };
+    list.appendChild(div);
+  });
+  document.getElementById('n-total').textContent = students.length;
+  document.getElementById('n-present').textContent = present;
+  document.getElementById('n-absent').textContent = absent;
+}
+
+function markAll(val) {
+  students = students.map(s => ({ ...s, present: val }));
+  render();
+}
+
+function addStudent() {
+  const input = document.getElementById('new-name');
+  const name = input.value.trim();
+  if (!name) return;
+  students.push({ name, present: true });
+  render();
+  input.value = '';
+  showToast(`➕ ${name} נוסף`);
+}
+
+document.getElementById('new-name').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addStudent();
+});
+
+function buildMessage() {
+  const className = document.getElementById('class-name').value || 'הכיתה';
+  const groupName = document.getElementById('group-name').value || 'צהרון';
+  const present = students.filter(s => s.present);
+  const absent = students.filter(s => !s.present);
+  const absentNames = absent.map(s => s.name).join(', ');
+  let msg = `📋 נוכחות ${groupName} כיתה ${className}\n`;
+  msg += `📅 ${dateStr}\n`;
+  msg += `✅ נוכחים: ${present.length}/${students.length}\n`;
+  msg += `❌ נעדרים: ${absent.length}/${students.length}`;
+  if (absentNames) msg += `\nנעדרים: ${absentNames}`;
+  return msg;
+}
+
+function showSummary() {
+  const msg = buildMessage();
+  document.getElementById('msg-preview').textContent = msg;
+  const card = document.getElementById('summary-card');
+  card.style.display = 'block';
+  setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+}
+
+async function shareMsg() {
+  const msg = buildMessage();
+  if (navigator.share) {
+    try {
+      await navigator.share({ text: msg });
+      showToast('✅ נשתף בהצלחה!');
+    } catch(e) {
+      if (e.name !== 'AbortError') copyMsg();
+    }
+  } else {
+    window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+  }
+}
+
+async function copyMsg() {
+  try {
+    await navigator.clipboard.writeText(buildMessage());
+    showToast('📋 הועתק! פתח את הקבוצה והדבק');
+  } catch(e) {
+    showToast('❌ לא ניתן להעתיק');
+  }
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('install-banner').style.display = 'flex';
+});
+
+document.getElementById('install-btn').addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  if (outcome === 'accepted') showToast('✅ האפליקציה הותקנה!');
+  deferredPrompt = null;
+  document.getElementById('install-banner').style.display = 'none';
+});
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js');
+}
+
+render();
+</script>
+</body>
+</html>
