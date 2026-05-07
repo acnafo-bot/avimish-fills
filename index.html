@@ -1,1 +1,840 @@
 
+
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#FF6B6B">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="נוכחות">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700;900&display=swap" rel="stylesheet">
+<title>בדיקת נוכחות</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'Heebo',sans-serif;background:#FFF8F0;min-height:100vh;overscroll-behavior:none}
+
+/* PIN SCREEN */
+.pin-screen{position:fixed;inset:0;background:linear-gradient(135deg,#FF6B6B,#FF8E53);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;padding:24px}
+.pin-screen.hidden{display:none}
+.pin-logo{font-size:3.5rem;margin-bottom:12px}
+.pin-title{font-size:1.6rem;font-weight:900;color:white;margin-bottom:4px}
+.pin-sub{font-size:0.85rem;color:rgba(255,255,255,0.85);margin-bottom:32px;font-weight:600}
+.pin-dots{display:flex;gap:12px;margin-bottom:28px}
+.pin-dot{width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,0.3);transition:all 0.15s}
+.pin-dot.filled{background:white}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;width:100%;max-width:280px}
+.pin-btn{background:rgba(255,255,255,0.2);border:none;border-radius:16px;padding:18px;font-size:1.4rem;font-weight:900;color:white;cursor:pointer;transition:all 0.15s;font-family:'Heebo',sans-serif}
+.pin-btn:active{background:rgba(255,255,255,0.4);transform:scale(0.95)}
+.pin-btn.del{font-size:1.1rem}
+.pin-btn.empty{visibility:hidden}
+.pin-error{color:white;font-weight:800;font-size:0.88rem;margin-top:12px;opacity:0;transition:opacity 0.3s}
+.pin-error.show{opacity:1}
+.pin-setup-link{color:rgba(255,255,255,0.7);font-size:0.8rem;margin-top:20px;cursor:pointer;text-decoration:underline}
+
+/* HEADER */
+header{background:linear-gradient(135deg,#FF6B6B,#FF8E53);padding:20px 16px 0;padding-top:calc(env(safe-area-inset-top,0px)+16px);text-align:center;color:white;box-shadow:0 4px 12px rgba(255,107,107,0.3);position:sticky;top:0;z-index:10}
+header h1{font-size:1.3rem;font-weight:900}
+header p{font-size:0.78rem;opacity:0.9;margin-top:2px}
+.tabs{display:flex;margin-top:12px}
+.tab{flex:1;padding:10px 4px;text-align:center;font-size:0.75rem;font-weight:800;cursor:pointer;border-bottom:3px solid transparent;color:rgba(255,255,255,0.7);transition:all 0.2s}
+.tab.active{border-bottom-color:white;color:white}
+.page{display:none}.page.active{display:block}
+.container{max-width:520px;margin:0 auto;padding:12px 14px 100px}
+
+/* CARDS */
+.card{background:white;border-radius:18px;padding:16px;margin-bottom:12px;box-shadow:0 4px 14px rgba(0,0,0,0.07)}
+.card-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.card-num{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:900;font-size:0.85rem;flex-shrink:0}
+.card-title{font-size:1rem;font-weight:900}
+.field{margin-bottom:10px}
+.field label{display:block;font-size:0.72rem;font-weight:800;color:#888;margin-bottom:4px;text-transform:uppercase}
+.fields-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+input[type=text],input[type=time],input[type=password]{width:100%;padding:10px 12px;border:2px solid #E8E8E8;border-radius:10px;font-family:'Heebo',sans-serif;font-size:0.92rem;font-weight:600;color:#2D2D2D;outline:none;transition:border-color 0.2s}
+input:focus{border-color:#4D96FF}
+.type-btns{display:flex;gap:8px}
+.type-btn{flex:1;padding:9px 6px;border:2px solid #E8E8E8;border-radius:10px;font-family:'Heebo',sans-serif;font-size:0.75rem;font-weight:800;cursor:pointer;background:white;color:#888;transition:all 0.15s;text-align:center}
+.type-btn.active{border-color:#FF6B6B;background:#FFF0F0;color:#FF6B6B}
+
+/* ATTENDANCE */
+.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
+.stat{border-radius:12px;padding:9px 6px;text-align:center}
+.stat-num{font-size:1.5rem;font-weight:900;display:block;line-height:1}
+.stat-lbl{font-size:0.65rem;font-weight:800;margin-top:2px;opacity:0.8}
+.quick-btns{display:flex;gap:8px;margin-bottom:12px}
+.quick-btn{flex:1;padding:9px 8px;border:none;border-radius:10px;font-family:'Heebo',sans-serif;font-size:0.78rem;font-weight:800;cursor:pointer;color:white}
+.student-list{display:flex;flex-direction:column;gap:7px;max-height:340px;overflow-y:auto}
+.student{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-radius:13px;border:2px solid transparent;transition:all 0.12s;user-select:none}
+.student.present{background:#B9FBC0;border-color:#6BCB77}
+.student.absent{background:#FFB3B3;border-color:#FF6B6B}
+.student-left{display:flex;align-items:center;gap:8px;flex:1;cursor:pointer}
+.student-name{font-size:0.95rem;font-weight:700}
+.student-icon{font-size:1.2rem}
+.student-del{background:none;border:none;color:#ddd;font-size:0.95rem;cursor:pointer;padding:4px 6px;border-radius:6px}
+.student-del:active{color:#FF6B6B}
+.add-row{display:flex;gap:8px;margin-top:12px}
+.add-row input{flex:1}
+.add-btn{padding:10px 14px;border-radius:10px;border:none;color:white;font-weight:800;font-family:'Heebo',sans-serif;font-size:0.85rem;cursor:pointer;white-space:nowrap}
+
+/* UPLOAD */
+.upload-zone{border:2.5px dashed #ccc;border-radius:14px;padding:20px 12px;text-align:center;cursor:pointer;background:#FAFAFA}
+
+/* EARLY */
+.pick-list{display:flex;flex-direction:column;gap:7px;max-height:280px;overflow-y:auto;margin-bottom:12px}
+.pick-item{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-radius:13px;cursor:pointer;border:2px solid #E8E8E8;background:#FAFAFA;user-select:none}
+.pick-item.selected{background:#FFF3E0;border-color:#FF8E53}
+.early-list{display:flex;flex-direction:column;gap:10px;max-height:360px;overflow-y:auto}
+.early-item{background:#FFF8F0;border:2px solid #FFD93D;border-radius:14px;padding:12px 14px}
+.early-item-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.early-name{font-size:0.95rem;font-weight:900}
+.early-remove{background:none;border:none;font-size:1.1rem;cursor:pointer;color:#FF6B6B}
+.early-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.early-fields input{font-size:0.85rem;padding:8px 10px}
+.section-lbl{font-size:0.72rem;font-weight:800;color:#888;text-transform:uppercase;margin-bottom:8px}
+
+/* HISTORY */
+.hist-item{background:white;border-radius:14px;padding:14px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,0.06);border-right:4px solid #6BCB77}
+.hist-date{font-size:0.82rem;font-weight:900;color:#888;margin-bottom:6px}
+.hist-stats{display:flex;gap:12px;margin-bottom:4px}
+.hist-present{color:#2D7A36;font-weight:800;font-size:0.88rem}
+.hist-absent{color:#C0392B;font-weight:800;font-size:0.88rem}
+.hist-names{font-size:0.78rem;color:#C0392B;margin-top:4px}
+
+/* SETTINGS */
+.settings-section{margin-bottom:16px}
+.settings-title{font-size:0.78rem;font-weight:900;color:#888;text-transform:uppercase;margin-bottom:10px;letter-spacing:0.5px}
+.backup-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+
+/* MESSAGE */
+.msg-preview{background:#E8F5E9;border:2px solid #A5D6A7;border-radius:12px;padding:14px;font-size:0.88rem;line-height:1.75;font-weight:600;white-space:pre-line;margin-bottom:14px;color:#2D2D2D}
+
+/* BUTTONS */
+.btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;padding:13px 20px;border-radius:50px;border:none;font-family:'Heebo',sans-serif;font-size:0.95rem;font-weight:900;cursor:pointer;margin-top:8px}
+.btn:active{transform:scale(0.97)}
+.btn-blue{background:#4D96FF;color:white}
+.btn-orange{background:#FF8E53;color:white}
+.btn-purple{background:#C77DFF;color:white}
+.btn-green{background:#6BCB77;color:white}
+.btn-share{background:#25D366;color:white}
+.btn-copy{background:#FFD93D;color:#333}
+.btn-red{background:#FF6B6B;color:white}
+.btn-sm{padding:9px 16px;font-size:0.82rem;border-radius:30px;margin-top:0}
+
+.loading{text-align:center;padding:30px;color:#888;font-weight:700}
+.empty-state{text-align:center;padding:30px;color:#bbb;font-size:0.88rem;font-weight:700}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(30px);background:#2D2D2D;color:white;padding:10px 20px;border-radius:50px;font-weight:700;font-size:0.85rem;transition:all 0.3s;opacity:0;z-index:1001;white-space:nowrap;pointer-events:none}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.shake{animation:shake 0.3s}
+</style>
+</head>
+<body>
+
+<!-- PIN SCREEN -->
+<div class="pin-screen" id="pin-screen">
+  <div class="pin-logo">🎒</div>
+  <div class="pin-title">בדיקת נוכחות</div>
+  <div class="pin-sub" id="pin-sub">הכנס קוד כניסה</div>
+  <div class="pin-dots" id="pin-dots">
+    <div class="pin-dot" id="d0"></div>
+    <div class="pin-dot" id="d1"></div>
+    <div class="pin-dot" id="d2"></div>
+    <div class="pin-dot" id="d3"></div>
+  </div>
+  <div class="pin-pad">
+    <button class="pin-btn" onclick="pinPress('1')">1</button>
+    <button class="pin-btn" onclick="pinPress('2')">2</button>
+    <button class="pin-btn" onclick="pinPress('3')">3</button>
+    <button class="pin-btn" onclick="pinPress('4')">4</button>
+    <button class="pin-btn" onclick="pinPress('5')">5</button>
+    <button class="pin-btn" onclick="pinPress('6')">6</button>
+    <button class="pin-btn" onclick="pinPress('7')">7</button>
+    <button class="pin-btn" onclick="pinPress('8')">8</button>
+    <button class="pin-btn" onclick="pinPress('9')">9</button>
+    <button class="pin-btn empty"></button>
+    <button class="pin-btn" onclick="pinPress('0')">0</button>
+    <button class="pin-btn del" onclick="pinDel()">⌫</button>
+  </div>
+  <div class="pin-error" id="pin-error">קוד שגוי, נסה שוב</div>
+  <div class="pin-setup-link" id="pin-setup-link" onclick="showPinSetup()">הגדר קוד לראשונה</div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" style="display:none">
+
+<header>
+  <h1 id="header-title">🎒 בדיקת נוכחות</h1>
+  <p id="header-sub"></p>
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('att')">✅ נוכחות</div>
+    <div class="tab" onclick="switchTab('early')">🚪 יציאה</div>
+    <div class="tab" onclick="switchTab('history')">📅 היסטוריה</div>
+    <div class="tab" onclick="switchTab('settings')">⚙️ הגדרות</div>
+  </div>
+</header>
+
+<!-- TAB: ATTENDANCE -->
+<div class="page active" id="page-att">
+<div class="container">
+
+  <div class="card">
+    <div class="card-header"><div class="card-num" style="background:#6BCB77">1</div><div class="card-title">סמן נוכחות</div></div>
+    <div class="stats">
+      <div class="stat" style="background:#EEF2FF"><span class="stat-num" id="n-total" style="color:#4D96FF">0</span><div class="stat-lbl" style="color:#4D96FF">סה"כ</div></div>
+      <div class="stat" style="background:#B9FBC0"><span class="stat-num" id="n-present" style="color:#2D7A36">0</span><div class="stat-lbl" style="color:#2D7A36">נמצאים ✅</div></div>
+      <div class="stat" style="background:#FFB3B3"><span class="stat-num" id="n-absent" style="color:#C0392B">0</span><div class="stat-lbl" style="color:#C0392B">לא נמצאים ❌</div></div>
+    </div>
+    <div class="quick-btns">
+      <button class="quick-btn" style="background:#6BCB77" onclick="markAll(true)">✅ כולם נמצאים</button>
+      <button class="quick-btn" style="background:#FF6B6B" onclick="markAll(false)">❌ כולם לא נמצאים</button>
+    </div>
+    <div class="student-list" id="student-list"></div>
+    <div class="add-row">
+      <input type="text" id="new-name" placeholder="הוסף תלמיד...">
+      <button class="add-btn" style="background:#6BCB77" onclick="addStudent()">+ הוסף</button>
+    </div>
+    <button class="btn btn-purple" onclick="showAttSummary()" style="margin-top:14px">📋 סיכום ושיתוף ←</button>
+  </div>
+
+  <div class="card" id="att-summary" style="display:none">
+    <div class="card-header"><div class="card-num" style="background:#C77DFF">2</div><div class="card-title">שיתוף נוכחות</div></div>
+    <div class="msg-preview" id="att-msg"></div>
+    <button class="btn btn-share" onclick="shareMsg('att')">📤 שתף לקבוצת וואטסאפ</button>
+    <button class="btn btn-copy" onclick="copyMsg('att')">📋 העתק הודעה</button>
+  </div>
+
+  <!-- AI IMAGE UPLOAD -->
+  <div class="card">
+    <div class="card-header"><div class="card-num" style="background:#4D96FF;font-size:0.65rem">AI</div><div class="card-title">טען רשימה מתמונה</div></div>
+    <p style="font-size:0.82rem;color:#888;margin-bottom:12px;font-weight:600">צלם רשימת תלמידים — AI יחלץ שמות ויסדר אלפביתית</p>
+    <div class="upload-zone" onclick="document.getElementById('img-input').click()">
+      <div style="font-size:2rem;margin-bottom:6px">📋</div>
+      <div style="color:#4D96FF;font-weight:800;font-size:0.9rem">לחץ להעלאת תמונה</div>
+      <div style="color:#aaa;font-size:0.78rem;margin-top:3px">מהגלריה או מהמצלמה</div>
+      <input type="file" id="img-input" accept="image/*" style="display:none" onchange="handleImage(this)">
+    </div>
+    <img id="img-preview" style="display:none;width:100%;border-radius:10px;margin-top:10px;max-height:150px;object-fit:cover">
+    <div id="extract-loading" style="display:none;text-align:center;padding:14px;color:#4D96FF;font-weight:700">
+      <div style="margin-bottom:8px;display:flex;justify-content:center;gap:6px">
+        <span style="width:9px;height:9px;border-radius:50%;background:#4D96FF;display:inline-block;animation:bounce 1s 0s infinite"></span>
+        <span style="width:9px;height:9px;border-radius:50%;background:#4D96FF;display:inline-block;animation:bounce 1s 0.2s infinite"></span>
+        <span style="width:9px;height:9px;border-radius:50%;background:#4D96FF;display:inline-block;animation:bounce 1s 0.4s infinite"></span>
+      </div>מחלץ שמות...
+    </div>
+    <button id="extract-btn" class="btn btn-blue" onclick="extractNames()" style="display:none;margin-top:10px">✨ חלץ שמות מהתמונה</button>
+  </div>
+
+</div>
+</div>
+
+<!-- TAB: EARLY -->
+<div class="page" id="page-early">
+<div class="container">
+  <div class="card">
+    <div class="card-header"><div class="card-num" style="background:#FF8E53">🚪</div><div class="card-title">יציאה מוקדמת</div></div>
+    <p style="font-size:0.82rem;color:#888;margin-bottom:14px;font-weight:600">בחר תלמידים מהרשימה ← הוסף שעה ומי אוסף</p>
+    <div class="section-lbl">בחר מהרשימה</div>
+    <div class="pick-list" id="pick-list"></div>
+    <div id="early-selected-section" style="display:none">
+      <div class="section-lbl" style="margin-top:4px">יוצאים מוקדם</div>
+      <div class="early-list" id="early-list"></div>
+    </div>
+    <button class="btn btn-orange" onclick="buildEarlySummary()" style="margin-top:12px">📋 סיכום ושיתוף</button>
+  </div>
+  <div class="card" id="early-summary" style="display:none">
+    <div class="card-header"><div class="card-num" style="background:#FF8E53">📤</div><div class="card-title">שיתוף יציאה מוקדמת</div></div>
+    <div class="msg-preview" id="early-msg"></div>
+    <button class="btn btn-share" onclick="shareMsg('early')">📤 שתף לקבוצת וואטסאפ</button>
+    <button class="btn btn-copy" onclick="copyMsg('early')">📋 העתק הודעה</button>
+  </div>
+</div>
+</div>
+
+<!-- TAB: HISTORY -->
+<div class="page" id="page-history">
+<div class="container">
+  <div class="card">
+    <div class="card-header"><div class="card-num" style="background:#4D96FF">📅</div><div class="card-title">היסטוריית נוכחות</div></div>
+    <div id="history-list"><div class="empty-state">אין היסטוריה עדיין<br>שמור נוכחות כדי להתחיל</div></div>
+    <button class="btn btn-red" onclick="clearHistory()" style="margin-top:12px">🗑 מחק היסטוריה</button>
+  </div>
+</div>
+</div>
+
+<!-- TAB: SETTINGS -->
+<div class="page" id="page-settings">
+<div class="container">
+
+  <div class="card">
+    <div class="card-header"><div class="card-num" style="background:#FF6B6B">⚙️</div><div class="card-title">הגדרות כלליות</div></div>
+    <div class="fields-2">
+      <div class="field"><label>שם בית הספר</label><input type="text" id="school-name" placeholder="בי״ס רמון" oninput="saveSettings()"></div>
+      <div class="field"><label>עיר</label><input type="text" id="city-name" placeholder="תל אביב" oninput="saveSettings()"></div>
+    </div>
+    <div class="field">
+      <label>סוג מסגרת</label>
+      <div class="type-btns">
+        <div class="type-btn active" id="type-0" onclick="setType(this,'שעות בי״ס')">🏫 שעות בי״ס</div>
+        <div class="type-btn" id="type-1" onclick="setType(this,'צהרון')">🌤️ צהרון</div>
+        <div class="type-btn" id="type-2" onclick="setType(this,'כללי')">📋 כללי</div>
+      </div>
+    </div>
+    <div class="fields-2" style="margin-top:10px">
+      <div class="field"><label>שם הכיתה</label><input type="text" id="class-name" placeholder="ג2" oninput="saveSettings()"></div>
+      <div class="field"><label>שם המורה / מדריך</label><input type="text" id="teacher-name" placeholder="שם המורה" oninput="saveSettings()"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div class="card-num" style="background:#4D96FF">🔐</div><div class="card-title">קוד PIN</div></div>
+    <div class="field"><label>קוד נוכחי</label><input type="password" id="old-pin" placeholder="הכנס קוד נוכחי" maxlength="4"></div>
+    <div class="field"><label>קוד חדש (4 ספרות)</label><input type="password" id="new-pin" placeholder="קוד חדש" maxlength="4"></div>
+    <div class="field"><label>אישור קוד חדש</label><input type="password" id="confirm-pin" placeholder="חזור על הקוד" maxlength="4"></div>
+    <button class="btn btn-blue" onclick="changePin()">🔐 עדכן קוד</button>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div class="card-num" style="background:#6BCB77">💾</div><div class="card-title">גיבוי רשימת תלמידים</div></div>
+    <p style="font-size:0.82rem;color:#888;margin-bottom:12px;font-weight:600">ייצא את הרשימה לקובץ טקסט כדי לגבות אותה</p>
+    <div class="backup-btns">
+      <button class="btn btn-green btn-sm" onclick="exportStudents()">📤 ייצא רשימה</button>
+      <button class="btn btn-blue btn-sm" onclick="document.getElementById('import-file').click()">📥 ייבא רשימה</button>
+    </div>
+    <input type="file" id="import-file" accept=".txt,.json" style="display:none" onchange="importStudents(this)">
+    <p style="font-size:0.75rem;color:#aaa;margin-top:10px;font-weight:600;text-align:center">הרשימה נשמרת אוטומטית במכשיר</p>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div class="card-num" style="background:#FF6B6B">🚪</div><div class="card-title">יציאה</div></div>
+    <button class="btn btn-red" onclick="logout()">🔒 נעל את האפליקציה</button>
+  </div>
+
+</div>
+</div>
+
+</div><!-- end app -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ==========================================
+// CONSTANTS & STATE
+// ==========================================
+const STORAGE = {
+  PIN: 'att_pin',
+  SETTINGS: 'att_settings',
+  STUDENTS: 'att_students',
+  HISTORY: 'att_history'
+};
+
+const DAYS = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+const now = new Date();
+const dateStr = `יום ${DAYS[now.getDay()]}, ${now.toLocaleDateString('he-IL')}`;
+const dateKey = now.toISOString().split('T')[0];
+
+let settings = {
+  school: '', city: '', frameType: 'שעות בי״ס',
+  className: '', teacherName: ''
+};
+let students = [];
+let earlyStudents = {};
+let history = [];
+let imageBase64 = null, imageType = 'image/jpeg';
+let pinBuffer = '';
+
+// ==========================================
+// PIN SYSTEM
+// ==========================================
+function initPin() {
+  const savedPin = localStorage.getItem(STORAGE.PIN);
+  if (!savedPin) {
+    document.getElementById('pin-setup-link').style.display = 'block';
+    document.getElementById('pin-sub').textContent = 'הגדר קוד כניסה';
+  } else {
+    document.getElementById('pin-setup-link').style.display = 'none';
+    document.getElementById('pin-sub').textContent = 'הכנס קוד כניסה';
+  }
+}
+
+function pinPress(num) {
+  if (pinBuffer.length >= 4) return;
+  pinBuffer += num;
+  updatePinDots();
+  if (pinBuffer.length === 4) {
+    setTimeout(() => checkPin(), 100);
+  }
+}
+
+function pinDel() {
+  pinBuffer = pinBuffer.slice(0, -1);
+  updatePinDots();
+}
+
+function updatePinDots() {
+  for (let i = 0; i < 4; i++) {
+    document.getElementById('d' + i).classList.toggle('filled', i < pinBuffer.length);
+  }
+}
+
+function checkPin() {
+  const savedPin = localStorage.getItem(STORAGE.PIN);
+  if (!savedPin) {
+    // הגדרה ראשונה
+    localStorage.setItem(STORAGE.PIN, pinBuffer);
+    showToast('✅ קוד הוגדר!');
+    unlockApp();
+    return;
+  }
+  if (pinBuffer === savedPin) {
+    unlockApp();
+  } else {
+    document.getElementById('pin-error').classList.add('show');
+    document.getElementById('pin-dots').classList.add('shake');
+    setTimeout(() => {
+      document.getElementById('pin-error').classList.remove('show');
+      document.getElementById('pin-dots').classList.remove('shake');
+    }, 1000);
+    pinBuffer = '';
+    updatePinDots();
+  }
+}
+
+function showPinSetup() {
+  document.getElementById('pin-sub').textContent = 'הגדר קוד 4 ספרות';
+  document.getElementById('pin-setup-link').style.display = 'none';
+}
+
+function unlockApp() {
+  document.getElementById('pin-screen').classList.add('hidden');
+  document.getElementById('app').style.display = 'block';
+}
+
+function logout() {
+  document.getElementById('pin-screen').classList.remove('hidden');
+  document.getElementById('app').style.display = 'none';
+  pinBuffer = '';
+  updatePinDots();
+  switchTab('att');
+}
+
+function changePin() {
+  const oldPin = document.getElementById('old-pin').value;
+  const newPin = document.getElementById('new-pin').value;
+  const confirmPin = document.getElementById('confirm-pin').value;
+  const savedPin = localStorage.getItem(STORAGE.PIN);
+
+  if (oldPin !== savedPin) { showToast('❌ קוד נוכחי שגוי'); return; }
+  if (newPin.length !== 4 || !/^\d{4}$/.test(newPin)) { showToast('⚠️ קוד חייב להיות 4 ספרות'); return; }
+  if (newPin !== confirmPin) { showToast('⚠️ הקודים לא תואמים'); return; }
+
+  localStorage.setItem(STORAGE.PIN, newPin);
+  document.getElementById('old-pin').value = '';
+  document.getElementById('new-pin').value = '';
+  document.getElementById('confirm-pin').value = '';
+  showToast('✅ קוד עודכן בהצלחה!');
+}
+
+// ==========================================
+// SETTINGS
+// ==========================================
+function loadSettings() {
+  const saved = localStorage.getItem(STORAGE.SETTINGS);
+  if (saved) settings = { ...settings, ...JSON.parse(saved) };
+  document.getElementById('school-name').value = settings.school || '';
+  document.getElementById('city-name').value = settings.city || '';
+  document.getElementById('class-name').value = settings.className || '';
+  document.getElementById('teacher-name').value = settings.teacherName || '';
+  const types = ['שעות בי״ס', 'צהרון', 'כללי'];
+  types.forEach((t, i) => {
+    document.getElementById('type-' + i).classList.toggle('active', t === settings.frameType);
+  });
+  updateHeader();
+}
+
+function saveSettings() {
+  settings.school = document.getElementById('school-name').value;
+  settings.city = document.getElementById('city-name').value;
+  settings.className = document.getElementById('class-name').value;
+  settings.teacherName = document.getElementById('teacher-name').value;
+  localStorage.setItem(STORAGE.SETTINGS, JSON.stringify(settings));
+  updateHeader();
+}
+
+function setType(el, type) {
+  document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  settings.frameType = type;
+  saveSettings();
+}
+
+function updateHeader() {
+  let sub = '';
+  if (settings.school) sub += settings.school;
+  if (settings.city) sub += (sub ? ', ' : '') + settings.city;
+  if (settings.className) sub += (sub ? ' | ' : '') + 'כיתה ' + settings.className;
+  document.getElementById('header-sub').textContent = sub || dateStr;
+}
+
+// ==========================================
+// STUDENTS
+// ==========================================
+function loadStudents() {
+  const saved = localStorage.getItem(STORAGE.STUDENTS);
+  if (saved) {
+    students = JSON.parse(saved);
+  } else {
+    students = [
+      "אופיר גבע","אורן שקד","אולגה איצקוביץ'","איימי גלברג שריג",
+      "איתן צ'נגרי","אלכס טוויסטר","אלמה נגר","אמילי קלוגמן",
+      "אריאל נהור","אריאל פילהבר","אסף שושני","בן מוטיל",
+      "דניאל בירגר","דניאלה צדוק","הראל סברניק טף","לביא קלומידי",
+      "מיכאל אשהר","מיקה לנדה סבן","נוהר כהן","עברי חזות זריהן",
+      "עומר בן שושן","רני ברעם","רוני רוסו","ריו ארנון",
+      "ריין חוגג","רפאל מור","תום פרץ"
+    ].sort((a,b) => a.localeCompare(b,'he')).map(name => ({ name, present: true }));
+    saveStudents();
+  }
+  render();
+}
+
+function saveStudents() {
+  localStorage.setItem(STORAGE.STUDENTS, JSON.stringify(students));
+}
+
+function render() {
+  const list = document.getElementById('student-list');
+  list.innerHTML = '';
+  let present = 0, absent = 0;
+  students.forEach((s, i) => {
+    if (s.present) present++; else absent++;
+    const div = document.createElement('div');
+    div.className = `student ${s.present ? 'present' : 'absent'}`;
+    const safeName = s.name.replace(/'/g, "\\'");
+    div.innerHTML = `
+      <div class="student-left" onclick="toggle(${i})">
+        <span class="student-icon">${s.present ? '✅' : '❌'}</span>
+        <span class="student-name">${s.name}</span>
+      </div>
+      <button class="student-del" onclick="delStudent('${safeName}')" title="מחק">🗑</button>`;
+    list.appendChild(div);
+  });
+  document.getElementById('n-total').textContent = students.length;
+  document.getElementById('n-present').textContent = present;
+  document.getElementById('n-absent').textContent = absent;
+}
+
+function toggle(i) { students[i].present = !students[i].present; render(); }
+function markAll(val) { students = students.map(s => ({ ...s, present: val })); render(); }
+
+function addStudent() {
+  const input = document.getElementById('new-name');
+  const name = input.value.trim(); if (!name) return;
+  if (students.find(s => s.name === name)) { showToast('⚠️ תלמיד כבר קיים'); return; }
+  students.push({ name, present: true });
+  students.sort((a, b) => a.name.localeCompare(b.name, 'he'));
+  saveStudents(); render(); input.value = '';
+  showToast(`➕ ${name} נוסף`);
+}
+
+function delStudent(name) {
+  if (!confirm(`למחוק את ${name}?`)) return;
+  students = students.filter(s => s.name !== name);
+  delete earlyStudents[name];
+  saveStudents(); render(); renderPickList();
+  showToast(`🗑 ${name} נמחק`);
+}
+
+document.getElementById('new-name').addEventListener('keydown', e => { if (e.key === 'Enter') addStudent(); });
+
+// ==========================================
+// BACKUP / RESTORE
+// ==========================================
+function exportStudents() {
+  const names = students.map(s => s.name).join('\n');
+  const blob = new Blob([names], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `רשימת_תלמידים_${settings.className || 'כיתה'}.txt`;
+  a.click();
+  showToast('📤 הרשימה יוצאה!');
+}
+
+function importStudents(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const lines = e.target.result.split('\n').map(l => l.trim()).filter(Boolean);
+    if (!lines.length) { showToast('❌ קובץ ריק'); return; }
+    if (!confirm(`לייבא ${lines.length} תלמידים? הרשימה הנוכחית תוחלף.`)) return;
+    students = lines.sort((a,b) => a.localeCompare(b,'he')).map(name => ({ name, present: true }));
+    saveStudents(); render();
+    showToast(`✅ יובאו ${lines.length} תלמידים!`);
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+// ==========================================
+// AI IMAGE
+// ==========================================
+function handleImage(input) {
+  const file = input.files[0]; if (!file) return;
+  imageType = file.type || 'image/jpeg';
+  const reader = new FileReader();
+  reader.onload = e => {
+    const result = e.target.result;
+    imageBase64 = result.split(',')[1];
+    document.getElementById('img-preview').src = result;
+    document.getElementById('img-preview').style.display = 'block';
+    document.getElementById('extract-btn').style.display = 'flex';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function extractNames() {
+  if (!imageBase64) return;
+  document.getElementById('extract-loading').style.display = 'block';
+  document.getElementById('extract-btn').style.display = 'none';
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514", max_tokens: 1000,
+        messages: [{ role: "user", content: [
+          { type: "image", source: { type: "base64", media_type: imageType, data: imageBase64 } },
+          { type: "text", text: `חלץ שמות תלמידים מהתמונה. החזר JSON בלבד:\n{"names":["שם 1","שם 2"]}` }
+        ]}]
+      })
+    });
+    const data = await res.json();
+    const text = data.content?.find(b => b.type === 'text')?.text || '';
+    const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+    if (!confirm(`נמצאו ${parsed.names.length} תלמידים. להחליף את הרשימה הנוכחית?`)) return;
+    students = parsed.names.sort((a,b) => a.localeCompare(b,'he')).map(name => ({ name, present: true }));
+    saveStudents(); render();
+    showToast(`✅ נטענו ${students.length} תלמידים!`);
+  } catch(e) {
+    showToast('❌ שגיאה. נסה שוב.');
+    document.getElementById('extract-btn').style.display = 'flex';
+  }
+  document.getElementById('extract-loading').style.display = 'none';
+}
+
+// ==========================================
+// ATTENDANCE SUMMARY
+// ==========================================
+function buildAttMsg() {
+  const present = students.filter(s => s.present);
+  const absent = students.filter(s => !s.present);
+  let msg = `📋 בדיקת נוכחות — ${settings.frameType}\n`;
+  if (settings.school) msg += `🏫 ${settings.school}${settings.city ? ', ' + settings.city : ''}\n`;
+  msg += `📅 ${dateStr}`;
+  if (settings.className) msg += ` | כיתה ${settings.className}`;
+  if (settings.teacherName) msg += ` | ${settings.teacherName}`;
+  msg += `\n✅ נמצאים: ${present.length}/${students.length}`;
+  msg += `\n❌ לא נמצאים: ${absent.length}/${students.length}`;
+  if (absent.length) msg += `\nלא נמצאים: ${absent.map(s => s.name).join(', ')}`;
+  return msg;
+}
+
+function showAttSummary() {
+  // שמור בהיסטוריה
+  saveToHistory();
+  document.getElementById('att-msg').textContent = buildAttMsg();
+  const card = document.getElementById('att-summary');
+  card.style.display = 'block';
+  setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+}
+
+// ==========================================
+// HISTORY
+// ==========================================
+function loadHistory() {
+  const saved = localStorage.getItem(STORAGE.HISTORY);
+  history = saved ? JSON.parse(saved) : [];
+  renderHistory();
+}
+
+function saveToHistory() {
+  const present = students.filter(s => s.present).map(s => s.name);
+  const absent = students.filter(s => !s.present).map(s => s.name);
+  // הסר רשומה קיימת של היום
+  history = history.filter(h => h.date !== dateKey);
+  history.unshift({
+    date: dateKey,
+    dateDisplay: dateStr,
+    className: settings.className || '',
+    present: present.length,
+    absent: absent.length,
+    total: students.length,
+    absentNames: absent
+  });
+  // שמור עד 60 ימים
+  if (history.length > 60) history = history.slice(0, 60);
+  localStorage.setItem(STORAGE.HISTORY, JSON.stringify(history));
+  renderHistory();
+}
+
+function renderHistory() {
+  const container = document.getElementById('history-list');
+  if (!history.length) {
+    container.innerHTML = '<div class="empty-state">אין היסטוריה עדיין<br>שמור נוכחות כדי להתחיל</div>';
+    return;
+  }
+  container.innerHTML = '';
+  history.forEach(h => {
+    const div = document.createElement('div');
+    div.className = 'hist-item';
+    div.innerHTML = `
+      <div class="hist-date">📅 ${h.dateDisplay}${h.className ? ' | כיתה ' + h.className : ''}</div>
+      <div class="hist-stats">
+        <span class="hist-present">✅ נמצאים: ${h.present}/${h.total}</span>
+        <span class="hist-absent">❌ לא נמצאים: ${h.absent}</span>
+      </div>
+      ${h.absentNames.length ? `<div class="hist-names">לא נמצאים: ${h.absentNames.join(', ')}</div>` : ''}`;
+    container.appendChild(div);
+  });
+}
+
+function clearHistory() {
+  if (!confirm('למחוק את כל ההיסטוריה?')) return;
+  history = [];
+  localStorage.removeItem(STORAGE.HISTORY);
+  renderHistory();
+  showToast('🗑 ההיסטוריה נמחקה');
+}
+
+// ==========================================
+// EARLY DEPARTURE
+// ==========================================
+function renderPickList() {
+  const list = document.getElementById('pick-list');
+  list.innerHTML = '';
+  if (!students.length) {
+    list.innerHTML = '<div class="empty-state">אין תלמידים ברשימה</div>';
+    return;
+  }
+  students.forEach(s => {
+    const selected = !!earlyStudents[s.name];
+    const div = document.createElement('div');
+    div.className = `pick-item ${selected ? 'selected' : ''}`;
+    div.innerHTML = `<span style="font-weight:700">${s.name}</span><span>${selected ? '🟠' : '○'}</span>`;
+    div.onclick = () => toggleEarly(s.name);
+    list.appendChild(div);
+  });
+  renderEarlyList();
+}
+
+function toggleEarly(name) {
+  if (earlyStudents[name]) delete earlyStudents[name];
+  else earlyStudents[name] = { time: '', picker: '' };
+  renderPickList();
+}
+
+function renderEarlyList() {
+  const keys = Object.keys(earlyStudents);
+  document.getElementById('early-selected-section').style.display = keys.length ? 'block' : 'none';
+  const list = document.getElementById('early-list');
+  list.innerHTML = '';
+  keys.forEach(name => {
+    const s = earlyStudents[name];
+    const safe = name.replace(/'/g, "\\'");
+    const div = document.createElement('div');
+    div.className = 'early-item';
+    div.innerHTML = `
+      <div class="early-item-top">
+        <span class="early-name">🟠 ${name}</span>
+        <button class="early-remove" onclick="toggleEarly('${safe}')">✕</button>
+      </div>
+      <div class="early-fields">
+        <div><label style="font-size:0.72rem;font-weight:800;color:#888;display:block;margin-bottom:4px">שעת יציאה</label>
+          <input type="time" value="${s.time}" onchange="earlyStudents['${safe}'].time=this.value">
+        </div>
+        <div><label style="font-size:0.72rem;font-weight:800;color:#888;display:block;margin-bottom:4px">מי אוסף</label>
+          <input type="text" placeholder="שם האוסף" value="${s.picker}" oninput="earlyStudents['${safe}'].picker=this.value">
+        </div>
+      </div>`;
+    list.appendChild(div);
+  });
+}
+
+function buildEarlyMsg() {
+  const keys = Object.keys(earlyStudents);
+  let msg = `🚪 יציאה מוקדמת`;
+  if (settings.className) msg += ` — כיתה ${settings.className}`;
+  msg += '\n';
+  if (settings.school) msg += `🏫 ${settings.school}${settings.city ? ', ' + settings.city : ''}\n`;
+  msg += `📅 ${dateStr}`;
+  if (settings.teacherName) msg += ` | ${settings.teacherName}`;
+  msg += `\n${'─'.repeat(22)}\n`;
+  keys.forEach((name, i) => {
+    const s = earlyStudents[name];
+    msg += `${i+1}. ${name}`;
+    if (s.time) msg += ` — ${s.time}`;
+    if (s.picker) msg += ` | אוסף: ${s.picker}`;
+    msg += '\n';
+  });
+  msg += `${'─'.repeat(22)}\nסה"כ: ${keys.length} תלמידים`;
+  return msg;
+}
+
+function buildEarlySummary() {
+  if (!Object.keys(earlyStudents).length) { showToast('⚠️ בחר תלמידים קודם'); return; }
+  document.getElementById('early-msg').textContent = buildEarlyMsg();
+  const card = document.getElementById('early-summary');
+  card.style.display = 'block';
+  setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+}
+
+// ==========================================
+// SHARE
+// ==========================================
+async function shareMsg(type) {
+  const msg = type === 'att' ? buildAttMsg() : buildEarlyMsg();
+  if (navigator.share) {
+    try { await navigator.share({ text: msg }); showToast('✅ נשתף!'); }
+    catch(e) { if (e.name !== 'AbortError') copyMsg(type); }
+  } else { window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank'); }
+}
+
+async function copyMsg(type) {
+  const msg = type === 'att' ? buildAttMsg() : buildEarlyMsg();
+  try { await navigator.clipboard.writeText(msg); showToast('📋 הועתק!'); }
+  catch(e) { showToast('❌ לא ניתן להעתיק'); }
+}
+
+// ==========================================
+// TABS
+// ==========================================
+function switchTab(t) {
+  const tabs = ['att', 'early', 'history', 'settings'];
+  document.querySelectorAll('.tab').forEach((el, i) => el.classList.toggle('active', tabs[i] === t));
+  tabs.forEach(name => {
+    document.getElementById('page-' + name).classList.toggle('active', name === t);
+  });
+  if (t === 'early') renderPickList();
+  if (t === 'history') renderHistory();
+}
+
+// ==========================================
+// TOAST
+// ==========================================
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ==========================================
+// INIT
+// ==========================================
+initPin();
+loadSettings();
+loadStudents();
+loadHistory();
+</script>
+</body>
+</html>
