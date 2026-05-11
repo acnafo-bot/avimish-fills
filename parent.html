@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#4D96FF">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AttendAI הורים">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700;900&display=swap" rel="stylesheet">
+<title>AttendAI — פורטל הורים</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'Heebo',sans-serif;background:#F0F4FF;min-height:100vh;overscroll-behavior:none}
+
+/* SCREENS */
+.screen{display:none;min-height:100vh}
+.screen.active{display:flex;flex-direction:column}
+
+/* WELCOME SCREEN */
+#screen-welcome{background:linear-gradient(160deg,#4D96FF 0%,#6BCB77 100%);align-items:center;justify-content:center;padding:32px 24px;text-align:center}
+.welcome-logo{font-size:4rem;margin-bottom:12px}
+.welcome-brand{font-size:2rem;font-weight:900;color:white;letter-spacing:2px;margin-bottom:4px}
+.welcome-sub{font-size:0.88rem;color:rgba(255,255,255,0.8);margin-bottom:48px;font-weight:600}
+.welcome-btns{display:flex;flex-direction:column;gap:12px;width:100%;max-width:300px}
+.welcome-btn{padding:15px;border:none;border-radius:50px;font-family:'Heebo',sans-serif;font-size:1rem;font-weight:900;cursor:pointer;transition:transform 0.1s}
+.welcome-btn:active{transform:scale(0.97)}
+.btn-primary{background:white;color:#4D96FF}
+.btn-secondary{background:rgba(255,255,255,0.15);color:white;border:2px solid rgba(255,255,255,0.4)}
+
+/* REGISTER SCREEN */
+#screen-register{background:#F0F4FF}
+.screen-header{background:linear-gradient(135deg,#4D96FF,#6BCB77);padding:20px 16px;padding-top:calc(env(safe-area-inset-top,0px)+16px);color:white;text-align:center}
+.screen-header h2{font-size:1.2rem;font-weight:900}
+.screen-header p{font-size:0.78rem;opacity:0.85;margin-top:2px}
+.back-btn{position:absolute;right:16px;top:calc(env(safe-area-inset-top,0px)+18px);background:rgba(255,255,255,0.2);border:none;border-radius:20px;padding:5px 12px;color:white;font-size:0.78rem;font-weight:800;cursor:pointer;font-family:'Heebo',sans-serif}
+
+.form-container{max-width:480px;margin:0 auto;padding:20px 16px 80px}
+.form-card{background:white;border-radius:18px;padding:20px;margin-bottom:14px;box-shadow:0 4px 14px rgba(0,0,0,0.06)}
+.form-title{font-size:0.9rem;font-weight:900;color:#2D2D2D;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:0.72rem;font-weight:800;color:#888;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.5px}
+input[type=text],input[type=tel],input[type=password],select{width:100%;padding:11px 14px;border:2px solid #E8E8E8;border-radius:10px;font-family:'Heebo',sans-serif;font-size:0.92rem;font-weight:600;color:#2D2D2D;outline:none;transition:border-color 0.2s;background:white;-webkit-appearance:none}
+input:focus,select:focus{border-color:#4D96FF}
+select option{color:#2D2D2D}
+.fields-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;padding:14px 20px;border-radius:50px;border:none;font-family:'Heebo',sans-serif;font-size:1rem;font-weight:900;cursor:pointer;margin-top:8px;transition:transform 0.1s}
+.btn:active{transform:scale(0.97)}
+.btn-blue{background:linear-gradient(135deg,#4D96FF,#6BCB77);color:white;box-shadow:0 4px 14px rgba(77,150,255,0.3)}
+.btn-outline{background:white;color:#4D96FF;border:2px solid #4D96FF}
+.otp-row{display:flex;gap:8px;justify-content:center;margin:12px 0}
+.otp-input{width:52px;height:52px;border:2px solid #E8E8E8;border-radius:12px;font-size:1.4rem;font-weight:900;color:#2D2D2D;text-align:center;outline:none;font-family:'Heebo',sans-serif}
+.otp-input:focus{border-color:#4D96FF}
+
+/* MAIN APP */
+#screen-main{background:#F0F4FF}
+.main-header{background:linear-gradient(135deg,#4D96FF,#6BCB77);padding:20px 16px 0;padding-top:calc(env(safe-area-inset-top,0px)+14px);color:white;position:sticky;top:0;z-index:10}
+.main-header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.parent-greeting{font-size:1rem;font-weight:900}
+.parent-child{font-size:0.78rem;opacity:0.85;margin-top:2px}
+.logout-chip{background:rgba(255,255,255,0.2);border:none;border-radius:20px;padding:6px 12px;color:white;font-size:0.72rem;font-weight:800;cursor:pointer;font-family:'Heebo',sans-serif}
+.main-tabs{display:flex}
+.main-tab{flex:1;padding:10px 4px;text-align:center;font-size:0.72rem;font-weight:800;cursor:pointer;border-bottom:2px solid transparent;color:rgba(255,255,255,0.6);transition:all 0.2s}
+.main-tab.active{border-bottom-color:white;color:white}
+.page{display:none}.page.active{display:block}
+.main-container{max-width:480px;margin:0 auto;padding:14px 14px 80px}
+
+.card{background:white;border-radius:18px;padding:16px;margin-bottom:12px;box-shadow:0 4px 14px rgba(0,0,0,0.06)}
+.card-title{font-size:0.9rem;font-weight:900;color:#2D2D2D;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+
+/* STATUS CARD */
+.status-card{background:linear-gradient(135deg,#4D96FF,#6BCB77);border-radius:18px;padding:20px;margin-bottom:12px;color:white;text-align:center}
+.status-emoji{font-size:3rem;margin-bottom:8px}
+.status-name{font-size:1.2rem;font-weight:900;margin-bottom:4px}
+.status-class{font-size:0.82rem;opacity:0.85;margin-bottom:12px}
+.status-badge{background:rgba(255,255,255,0.2);border-radius:20px;padding:6px 18px;font-size:0.88rem;font-weight:800;display:inline-block}
+
+/* EXIT REQUEST */
+.exit-status{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+.exit-status-item{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-radius:12px;border:2px solid}
+.exit-pending{background:#FFF8F0;border-color:#FFD93D}
+.exit-active{background:#F0FFF4;border-color:#6BCB77}
+.exit-done{background:#F5F5F5;border-color:#E0E0E0;opacity:0.6}
+.exit-item-name{font-size:0.92rem;font-weight:800;color:#2D2D2D}
+.exit-item-meta{font-size:0.72rem;color:#888;font-weight:700;margin-top:2px}
+.exit-item-badge{font-size:0.68rem;font-weight:800;padding:3px 10px;border-radius:20px;white-space:nowrap}
+.badge-pending{background:#FFF3CD;color:#856404}
+.badge-active{background:#D4EDDA;color:#155724}
+.badge-done{background:#E2E3E5;color:#495057}
+
+/* MESSAGES */
+.msg-bubble{background:#F0F4FF;border-radius:14px 14px 14px 4px;padding:12px 14px;margin-bottom:8px;max-width:85%}
+.msg-bubble.sent{background:linear-gradient(135deg,#4D96FF,#6BCB77);color:white;border-radius:14px 14px 4px 14px;margin-right:auto;margin-left:0;align-self:flex-end}
+.msg-bubble-text{font-size:0.88rem;font-weight:600;line-height:1.5}
+.msg-bubble-time{font-size:0.65rem;opacity:0.6;margin-top:4px;font-weight:700}
+.msg-list{display:flex;flex-direction:column;gap:4px;max-height:280px;overflow-y:auto;margin-bottom:12px}
+.msg-input-row{display:flex;gap:8px}
+.msg-input-row input{flex:1}
+.send-btn{padding:11px 16px;border-radius:10px;border:none;background:linear-gradient(135deg,#4D96FF,#6BCB77);color:white;font-weight:900;font-family:'Heebo',sans-serif;font-size:0.85rem;cursor:pointer;white-space:nowrap}
+
+/* SUCCESS */
+.success-overlay{position:fixed;inset:0;background:rgba(255,255,255,0.95);z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center}
+.success-overlay.hidden{display:none}
+.success-emoji{font-size:4rem;margin-bottom:16px;animation:bounce 0.6s ease}
+.success-title{font-size:1.4rem;font-weight:900;color:#2D2D2D;margin-bottom:8px}
+.success-sub{font-size:0.9rem;color:#888;font-weight:600;margin-bottom:28px;line-height:1.6}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(30px);background:#2D2D2D;color:white;padding:10px 20px;border-radius:50px;font-weight:700;font-size:0.85rem;transition:all 0.3s;opacity:0;z-index:999;white-space:nowrap;pointer-events:none}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+@keyframes bounce{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.shake{animation:shake 0.3s}
+</style>
+</head>
+<body>
+
+<!-- SUCCESS OVERLAY -->
+<div class="success-overlay hidden" id="success-overlay">
+  <div class="success-emoji" id="success-emoji">✅</div>
+  <div class="success-title" id="success-title">הבקשה נשלחה!</div>
+  <div class="success-sub" id="success-sub">המדריך והמנהל קיבלו את הבקשה</div>
+  <button class="btn btn-blue" style="max-width:280px" onclick="closeSuccess()">חזור לפורטל</button>
+</div>
+
+<!-- SCREEN 1: WELCOME -->
+<div class="screen active" id="screen-welcome">
+  <div class="welcome-logo">🎒</div>
+  <div class="welcome-brand">AttendAI</div>
+  <div class="welcome-sub">פורטל הורים</div>
+  <div class="welcome-btns">
+    <button class="welcome-btn btn-primary" onclick="showScreen('screen-register')">הרשמה ראשונה</button>
+    <button class="welcome-btn btn-secondary" onclick="loginExisting()">כבר רשום — כניסה</button>
+  </div>
+</div>
+
+<!-- SCREEN 2: REGISTER -->
+<div class="screen" id="screen-register">
+  <div class="screen-header" style="position:relative">
+    <button class="back-btn" onclick="showScreen('screen-welcome')">← חזור</button>
+    <h2>הרשמה לפורטל הורים</h2>
+    <p>מלא פרטים פעם אחת — ואתה מחובר</p>
+  </div>
+  <div class="form-container">
+
+    <!-- STEP 1: PARENT DETAILS -->
+    <div class="form-card" id="step-1">
+      <div class="form-title">👤 פרטי ההורה</div>
+      <div class="fields-2">
+        <div class="field"><label>שם פרטי</label><input type="text" id="parent-first" placeholder="ישראל"></div>
+        <div class="field"><label>שם משפחה</label><input type="text" id="parent-last" placeholder="ישראלי"></div>
+      </div>
+      <div class="field"><label>מספר סלולרי</label><input type="tel" id="parent-phone" placeholder="05XXXXXXXX"></div>
+    </div>
+
+    <!-- STEP 2: CHILD DETAILS -->
+    <div class="form-card" id="step-2">
+      <div class="form-title">👦 פרטי הילד</div>
+      <div class="fields-2">
+        <div class="field"><label>שם פרטי</label><input type="text" id="child-first" placeholder="דני"></div>
+        <div class="field"><label>שם משפחה</label><input type="text" id="child-last" placeholder="ישראלי"></div>
+      </div>
+      <div class="fields-2">
+        <div class="field">
+          <label>כיתה</label>
+          <select id="child-class">
+            <option value="">בחר כיתה</option>
+            <option>א1</option><option>א2</option>
+            <option>ב1</option><option>ב2</option>
+            <option>ג1</option><option>ג2</option>
+            <option>ד1</option><option>ד2</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>שם הצהרון</label>
+          <select id="school-name">
+            <option value="">בחר</option>
+            <option>מעגלים</option>
+            <option>אחר</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 3: VERIFY -->
+    <div class="form-card" id="step-3">
+      <div class="form-title">🔐 אימות מספר</div>
+      <p style="font-size:0.82rem;color:#888;margin-bottom:14px;font-weight:600">שלחנו קוד אימות ל-SMS — הכנס אותו כאן</p>
+      <div class="otp-row">
+        <input type="text" class="otp-input" maxlength="1" id="otp-1" oninput="otpNext(this,'otp-2')">
+        <input type="text" class="otp-input" maxlength="1" id="otp-2" oninput="otpNext(this,'otp-3')">
+        <input type="text" class="otp-input" maxlength="1" id="otp-3" oninput="otpNext(this,'otp-4')">
+        <input type="text" class="otp-input" maxlength="1" id="otp-4" oninput="otpNext(this,null)">
+      </div>
+      <p style="font-size:0.75rem;color:#aaa;text-align:center;font-weight:600">לצורך הדגמה — הקוד הוא <strong>1234</strong></p>
+    </div>
+
+    <button class="btn btn-blue" onclick="registerParent()">הרשמה ✓</button>
+    <button class="btn btn-outline" onclick="showScreen('screen-welcome')" style="margin-top:8px">ביטול</button>
+  </div>
+</div>
+
+<!-- SCREEN 3: MAIN APP -->
+<div class="screen" id="screen-main">
+  <div class="main-header">
+    <div class="main-header-top">
+      <div>
+        <div class="parent-greeting" id="greeting-name">שלום!</div>
+        <div class="parent-child" id="greeting-child"></div>
+      </div>
+      <button class="logout-chip" onclick="parentLogout()">יציאה</button>
+    </div>
+    <div class="main-tabs">
+      <div class="main-tab active" onclick="switchTab('home')">🏠 ראשי</div>
+      <div class="main-tab" onclick="switchTab('exit')">🚪 יציאה מוקדמת</div>
+      <div class="main-tab" onclick="switchTab('messages')">💬 הודעות</div>
+    </div>
+  </div>
+
+  <!-- HOME -->
+  <div class="page active" id="page-home">
+  <div class="main-container">
+
+    <div class="status-card">
+      <div class="status-emoji">🎒</div>
+      <div class="status-name" id="child-display-name">דני ישראלי</div>
+      <div class="status-class" id="child-display-class">כיתה ג2 — מעגלים</div>
+      <div class="status-badge" id="child-status">✅ נמצא בצהרון</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📋 פעולות מהירות</div>
+      <button class="btn btn-blue" onclick="switchTab('exit')">🚪 בקש יציאה מוקדמת</button>
+      <button class="btn btn-outline" onclick="switchTab('messages')" style="margin-top:8px">💬 שלח הודעה למדריך</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📅 היום בצהרון</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:#F0F4FF;border-radius:10px">
+          <div>
+            <div style="font-size:0.88rem;font-weight:800;color:#2D2D2D">ניצנים</div>
+            <div style="font-size:0.72rem;color:#888;font-weight:700">14:00–15:00</div>
+          </div>
+          <span style="background:#D4EDDA;color:#155724;font-size:0.68rem;font-weight:800;padding:3px 10px;border-radius:20px">פעיל</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:#FFF8F0;border-radius:10px;opacity:0.6">
+          <div>
+            <div style="font-size:0.88rem;font-weight:800;color:#2D2D2D;text-decoration:line-through">שיעור גיבוש</div>
+            <div style="font-size:0.72rem;color:#888;font-weight:700">14:30–15:30 → משחקי חצר</div>
+          </div>
+          <span style="background:#F8D7DA;color:#721C24;font-size:0.68rem;font-weight:800;padding:3px 10px;border-radius:20px">בוטל</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  </div>
+
+  <!-- EXIT REQUEST -->
+  <div class="page" id="page-exit">
+  <div class="main-container">
+
+    <div class="card">
+      <div class="card-title">🚪 בקשת יציאה מוקדמת</div>
+      <div class="field"><label>שעת יציאה מבוקשת</label><input type="time" id="req-time"></div>
+      <div class="field"><label>מי יאסוף</label><input type="text" id="req-picker" placeholder="שם האוסף — אמא, אבא, סבתא..."></div>
+      <div class="field"><label>הערה (אופציונלי)</label><input type="text" id="req-note" placeholder="למשל: תור לרופא"></div>
+      <button class="btn btn-blue" onclick="submitExit()">📤 שלח בקשה למדריך ומנהל</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📋 בקשות קודמות</div>
+      <div class="exit-status" id="exit-history">
+        <div style="text-align:center;padding:20px;color:#bbb;font-size:0.88rem;font-weight:700">אין בקשות קודמות</div>
+      </div>
+    </div>
+
+  </div>
+  </div>
+
+  <!-- MESSAGES -->
+  <div class="page" id="page-messages">
+  <div class="main-container">
+    <div class="card">
+      <div class="card-title">💬 הודעות למדריך</div>
+      <div class="msg-list" id="msg-list">
+        <div class="msg-bubble">
+          <div class="msg-bubble-text">שלום! דני יצא היום ב-14:30 🙂</div>
+          <div class="msg-bubble-time">המדריך — 14:35</div>
+        </div>
+      </div>
+      <div class="msg-input-row">
+        <input type="text" id="msg-input" placeholder="כתוב הודעה למדריך..." onkeydown="if(event.key==='Enter')sendParentMsg()">
+        <button class="send-btn" onclick="sendParentMsg()">שלח</button>
+      </div>
+    </div>
+  </div>
+  </div>
+
+</div><!-- end screen-main -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+const DAYS=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+const now=new Date();
+const dateStr=`יום ${DAYS[now.getDay()]}, ${now.toLocaleDateString('he-IL')}`;
+
+let parentData = JSON.parse(localStorage.getItem('attendai_parent')||'null');
+let exitRequests = JSON.parse(localStorage.getItem('attendai_exits')||'[]');
+
+// ==========================================
+// SCREENS
+// ==========================================
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ==========================================
+// AUTO LOGIN
+// ==========================================
+if (parentData) {
+  initMain();
+  showScreen('screen-main');
+}
+
+function loginExisting() {
+  if (parentData) { initMain(); showScreen('screen-main'); }
+  else showToast('⚠️ לא נמצא חשבון — אנא הירשם');
+}
+
+function parentLogout() {
+  if (!confirm('להתנתק?')) return;
+  localStorage.removeItem('attendai_parent');
+  parentData = null;
+  showScreen('screen-welcome');
+}
+
+// ==========================================
+// OTP
+// ==========================================
+function otpNext(el, nextId) {
+  el.value = el.value.replace(/\D/g,'');
+  if (el.value && nextId) document.getElementById(nextId).focus();
+}
+
+// ==========================================
+// REGISTER
+// ==========================================
+function registerParent() {
+  const firstName = document.getElementById('parent-first').value.trim();
+  const lastName = document.getElementById('parent-last').value.trim();
+  const phone = document.getElementById('parent-phone').value.trim();
+  const childFirst = document.getElementById('child-first').value.trim();
+  const childLast = document.getElementById('child-last').value.trim();
+  const childClass = document.getElementById('child-class').value;
+  const school = document.getElementById('school-name').value;
+  const otp = ['otp-1','otp-2','otp-3','otp-4'].map(id=>document.getElementById(id).value).join('');
+
+  if (!firstName||!lastName||!phone){showToast('⚠️ מלא פרטי הורה');return;}
+  if (!childFirst||!childLast||!childClass){showToast('⚠️ מלא פרטי ילד');return;}
+  if (otp !== '1234'){showToast('❌ קוד אימות שגוי');document.querySelectorAll('.otp-input').forEach(i=>i.value='');document.getElementById('otp-1').focus();return;}
+
+  parentData = { firstName, lastName, phone, childFirst, childLast, childClass, school };
+  localStorage.setItem('attendai_parent', JSON.stringify(parentData));
+
+  showSuccess('🎉','ההרשמה הושלמה!',`ברוך הבא ${firstName}!\nהמדריך של ${childFirst} מחכה לך`);
+  setTimeout(()=>{closeSuccess();initMain();showScreen('screen-main');},2500);
+}
+
+// ==========================================
+// MAIN
+// ==========================================
+function initMain() {
+  if (!parentData) return;
+  document.getElementById('greeting-name').textContent = `שלום, ${parentData.firstName}!`;
+  document.getElementById('greeting-child').textContent = `${parentData.childFirst} ${parentData.childLast} — כיתה ${parentData.childClass}`;
+  document.getElementById('child-display-name').textContent = `${parentData.childFirst} ${parentData.childLast}`;
+  document.getElementById('child-display-class').textContent = `כיתה ${parentData.childClass} — ${parentData.school||'צהרון'}`;
+  renderExitHistory();
+}
+
+function switchTab(t) {
+  const tabs=['home','exit','messages'];
+  document.querySelectorAll('.main-tab').forEach((el,i)=>el.classList.toggle('active',tabs[i]===t));
+  tabs.forEach(name=>document.getElementById('page-'+name).classList.toggle('active',name===t));
+}
+
+// ==========================================
+// EXIT REQUEST
+// ==========================================
+function submitExit() {
+  const time = document.getElementById('req-time').value;
+  const picker = document.getElementById('req-picker').value.trim();
+  const note = document.getElementById('req-note').value.trim();
+
+  if (!time){showToast('⚠️ בחר שעת יציאה');return;}
+  if (!picker){showToast('⚠️ מי יאסוף?');return;}
+
+  const req = {
+    id: Date.now(),
+    childName: `${parentData.childFirst} ${parentData.childLast}`,
+    classId: parentData.childClass,
+    time, picker, note,
+    status: 'pending',
+    timestamp: new Date().toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'})
+  };
+
+  exitRequests.unshift(req);
+  localStorage.setItem('attendai_exits', JSON.stringify(exitRequests));
+
+  document.getElementById('req-time').value='';
+  document.getElementById('req-picker').value='';
+  document.getElementById('req-note').value='';
+
+  renderExitHistory();
+  showSuccess('📤','הבקשה נשלחה!',`המדריך והמנהל קיבלו את הבקשה\n${parentData.childFirst} יצא ב-${time}\nאוסף: ${picker}`);
+}
+
+function renderExitHistory() {
+  exitRequests = JSON.parse(localStorage.getItem('attendai_exits')||'[]');
+  const list = document.getElementById('exit-history');
+  if (!exitRequests.length) {
+    list.innerHTML='<div style="text-align:center;padding:20px;color:#bbb;font-size:0.88rem;font-weight:700">אין בקשות קודמות</div>';
+    return;
+  }
+  list.innerHTML='';
+  exitRequests.forEach(r=>{
+    const div=document.createElement('div');
+    div.className=`exit-status-item ${r.status==='pending'?'exit-pending':r.status==='active'?'exit-active':'exit-done'}`;
+    div.innerHTML=`
+      <div>
+        <div class="exit-item-name">${r.childName} — ${r.time}</div>
+        <div class="exit-item-meta">אוסף: ${r.picker}${r.note?' | '+r.note:''} • נשלח: ${r.timestamp}</div>
+      </div>
+      <span class="exit-item-badge ${r.status==='pending'?'badge-pending':r.status==='active'?'badge-active':'badge-done'}">
+        ${r.status==='pending'?'⏳ ממתין':r.status==='active'?'✅ אושר':'✓ בוצע'}
+      </span>`;
+    list.appendChild(div);
+  });
+}
+
+// ==========================================
+// MESSAGES
+// ==========================================
+function sendParentMsg() {
+  const input=document.getElementById('msg-input');
+  const text=input.value.trim(); if(!text)return;
+  const list=document.getElementById('msg-list');
+  const div=document.createElement('div');
+  div.className='msg-bubble sent';
+  div.innerHTML=`<div class="msg-bubble-text">${text}</div><div class="msg-bubble-time">אתה — עכשיו</div>`;
+  list.appendChild(div);
+  list.scrollTop=list.scrollHeight;
+  input.value='';
+  showToast('✅ ההודעה נשלחה למדריך');
+}
+
+// ==========================================
+// SUCCESS
+// ==========================================
+function showSuccess(emoji,title,sub){
+  document.getElementById('success-emoji').textContent=emoji;
+  document.getElementById('success-title').textContent=title;
+  document.getElementById('success-sub').textContent=sub;
+  document.getElementById('success-overlay').classList.remove('hidden');
+}
+function closeSuccess(){document.getElementById('success-overlay').classList.add('hidden');}
+
+// ==========================================
+// TOAST
+// ==========================================
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+</script>
+</body>
+</html>
