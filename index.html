@@ -32,6 +32,12 @@ body{font-family:'Heebo',sans-serif;background:#FFF8F0;min-height:100vh;overscro
 .pin-error.show{opacity:1}
 .pin-setup-link{color:rgba(255,255,255,0.7);font-size:0.8rem;margin-top:20px;cursor:pointer;text-decoration:underline}
 
+/* SYNC INDICATOR */
+.sync-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#6BCB77;margin-left:6px;vertical-align:middle}
+.sync-dot.syncing{background:#FFD93D;animation:pulse 1s infinite}
+.sync-dot.error{background:#FF6B6B}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+
 /* HEADER */
 header{background:linear-gradient(135deg,#FF6B6B,#FF8E53);padding:20px 16px 0;padding-top:calc(env(safe-area-inset-top,0px)+16px);text-align:center;color:white;box-shadow:0 4px 12px rgba(255,107,107,0.3);position:sticky;top:0;z-index:10}
 header h1{font-size:1.3rem;font-weight:900}
@@ -164,7 +170,7 @@ input:focus{border-color:#4D96FF}
 <div id="app" style="display:none">
 
 <header>
-  <h1 id="header-title">🎒 בדיקת נוכחות</h1>
+  <h1 id="header-title">🎒 בדיקת נוכחות <span class="sync-dot" id="sync-dot" title="מחובר לענן"></span></h1>
   <p id="header-sub"></p>
   <div class="tabs">
     <div class="tab active" onclick="switchTab('att')">✅ נוכחות</div>
@@ -267,7 +273,8 @@ input:focus{border-color:#4D96FF}
 <div class="container">
 
   <div class="card">
-    <div class="card-header"><div class="card-num" style="background:#FF6B6B">⚙️</div><div class="card-title">הגדרות כלליות</div></div>
+    <div class="card-header"><div class="card-num" style="background:#FF6B6B">⚙️</div><div class="card-num" style="background:none;color:#888;font-size:0.7rem;width:auto">סנכרון ענן: <span id="sync-status">מחובר ✅</span></div></div>
+    <div class="card-title" style="margin-bottom:12px">הגדרות כלליות</div>
     <div class="fields-2">
       <div class="field"><label>שם בית הספר</label><input type="text" id="school-name" placeholder="בי״ס רמון" oninput="saveSettings()"></div>
       <div class="field"><label>עיר</label><input type="text" id="city-name" placeholder="תל אביב" oninput="saveSettings()"></div>
@@ -302,7 +309,7 @@ input:focus{border-color:#4D96FF}
       <button class="btn btn-blue btn-sm" onclick="document.getElementById('import-file').click()">📥 ייבא רשימה</button>
     </div>
     <input type="file" id="import-file" accept=".txt,.json" style="display:none" onchange="importStudents(this)">
-    <p style="font-size:0.75rem;color:#aaa;margin-top:10px;font-weight:600;text-align:center">הרשימה נשמרת אוטומטית במכשיר</p>
+    <p style="font-size:0.75rem;color:#aaa;margin-top:10px;font-weight:600;text-align:center">הרשימה מסונכרנת לענן אוטומטית ☁️</p>
   </div>
 
   <div class="card">
@@ -317,31 +324,221 @@ input:focus{border-color:#4D96FF}
 
 <div class="toast" id="toast"></div>
 
-<script>
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, addDoc, getDocs, deleteDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ==========================================
+// FIREBASE CONFIG
+// ==========================================
+const firebaseConfig = {
+  apiKey: "AIzaSyA7bdNtwk6RLAAvR3jBO8JWnMDmZRFYxhM",
+  authDomain: "mipo-e1e3d.firebaseapp.com",
+  projectId: "mipo-e1e3d",
+  storageBucket: "mipo-e1e3d.firebasestorage.app",
+  messagingSenderId: "774385236634",
+  appId: "1:774385236634:web:08b3fed4d1f4291dcc3d23",
+  measurementId: "G-CD6REVB3XQ"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
 // ==========================================
 // CONSTANTS & STATE
 // ==========================================
-const STORAGE = {
-  PIN: 'att_pin',
-  SETTINGS: 'att_settings',
-  STUDENTS: 'att_students',
-  HISTORY: 'att_history'
-};
-
+const STORAGE = { PIN: 'att_pin', SETTINGS: 'att_settings' };
 const DAYS = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
 const now = new Date();
 const dateStr = `יום ${DAYS[now.getDay()]}, ${now.toLocaleDateString('he-IL')}`;
 const dateKey = now.toISOString().split('T')[0];
 
-let settings = {
-  school: '', city: '', frameType: 'שעות בי״ס',
-  className: '', teacherName: ''
-};
+// מזהה כיתה — שנה כדי לנהל כיתות שונות
+const CLASS_ID = 'class_main';
+
+let settings = { school: '', city: '', frameType: 'שעות בי״ס', className: '', teacherName: '' };
 let students = [];
 let earlyStudents = {};
 let history = [];
 let imageBase64 = null, imageType = 'image/jpeg';
 let pinBuffer = '';
+let syncTimeout = null;
+
+// ==========================================
+// SYNC INDICATOR
+// ==========================================
+function setSyncStatus(status) {
+  const dot = document.getElementById('sync-dot');
+  const txt = document.getElementById('sync-status');
+  if (status === 'syncing') {
+    dot.className = 'sync-dot syncing';
+    if (txt) txt.textContent = 'מסנכרן... ☁️';
+  } else if (status === 'ok') {
+    dot.className = 'sync-dot';
+    if (txt) txt.textContent = 'מחובר ✅';
+  } else {
+    dot.className = 'sync-dot error';
+    if (txt) txt.textContent = 'שגיאת חיבור ❌';
+  }
+}
+
+// ==========================================
+// FIREBASE — STUDENTS
+// ==========================================
+async function saveStudentsToFirebase() {
+  setSyncStatus('syncing');
+  try {
+    await setDoc(doc(db, 'classes', CLASS_ID, 'data', 'students'), {
+      list: students,
+      updatedAt: new Date().toISOString()
+    });
+    setSyncStatus('ok');
+  } catch(e) {
+    console.error('שגיאה בשמירה:', e);
+    setSyncStatus('error');
+    showToast('⚠️ שמירה מקומית בלבד');
+    // גיבוי מקומי
+    localStorage.setItem('att_students_backup', JSON.stringify(students));
+  }
+}
+
+async function loadStudentsFromFirebase() {
+  try {
+    const snap = await getDoc(doc(db, 'classes', CLASS_ID, 'data', 'students'));
+    if (snap.exists()) {
+      students = snap.data().list || [];
+      setSyncStatus('ok');
+    } else {
+      // רשימה ראשונית
+      students = [
+        "אופיר גבע","אורן שקד","אולגה איצקוביץ'","איימי גלברג שריג",
+        "איתן צ'נגרי","אלכס טוויסטר","אלמה נגר","אמילי קלוגמן",
+        "אריאל נהור","אריאל פילהבר","אסף שושני","בן מוטיל",
+        "דניאל בירגר","דניאלה צדוק","הראל סברניק טף","לביא קלומידי",
+        "מיכאל אשהר","מיקה לנדה סבן","נוהר כהן","עברי חזות זריהן",
+        "עומר בן שושן","רני ברעם","רוני רוסו","ריו ארנון",
+        "ריין חוגג","רפאל מור","תום פרץ"
+      ].sort((a,b) => a.localeCompare(b,'he')).map(name => ({ name, present: true }));
+      await saveStudentsToFirebase();
+    }
+  } catch(e) {
+    console.error('שגיאת טעינה:', e);
+    setSyncStatus('error');
+    // טעינה מגיבוי מקומי
+    const backup = localStorage.getItem('att_students_backup');
+    if (backup) students = JSON.parse(backup);
+    showToast('⚠️ עובד במצב לא מקוון');
+  }
+  render();
+}
+
+// מאזין לשינויים בזמן אמת
+function listenToStudents() {
+  onSnapshot(doc(db, 'classes', CLASS_ID, 'data', 'students'), (snap) => {
+    if (snap.exists()) {
+      const newStudents = snap.data().list || [];
+      // עדכן רק אם השתנה ממכשיר אחר
+      if (JSON.stringify(newStudents) !== JSON.stringify(students)) {
+        students = newStudents;
+        render();
+        renderPickList();
+      }
+    }
+  }, (error) => {
+    console.error('שגיאת האזנה:', error);
+  });
+}
+
+// ==========================================
+// FIREBASE — HISTORY
+// ==========================================
+async function saveHistoryToFirebase(entry) {
+  try {
+    await setDoc(doc(db, 'classes', CLASS_ID, 'history', entry.date), entry);
+  } catch(e) {
+    console.error('שגיאה בשמירת היסטוריה:', e);
+    // גיבוי מקומי
+    const local = JSON.parse(localStorage.getItem('att_history') || '[]');
+    local.unshift(entry);
+    localStorage.setItem('att_history', JSON.stringify(local.slice(0, 60)));
+  }
+}
+
+async function loadHistoryFromFirebase() {
+  try {
+    const snap = await getDocs(collection(db, 'classes', CLASS_ID, 'history'));
+    history = [];
+    snap.forEach(d => history.push(d.data()));
+    history.sort((a, b) => b.date.localeCompare(a.date));
+    history = history.slice(0, 60);
+  } catch(e) {
+    console.error('שגיאת טעינת היסטוריה:', e);
+    const local = localStorage.getItem('att_history');
+    if (local) history = JSON.parse(local);
+  }
+  renderHistory();
+}
+
+async function clearHistoryFromFirebase() {
+  try {
+    const snap = await getDocs(collection(db, 'classes', CLASS_ID, 'history'));
+    const dels = snap.docs.map(d => deleteDoc(d.ref));
+    await Promise.all(dels);
+    history = [];
+    renderHistory();
+    showToast('🗑 ההיסטוריה נמחקה');
+  } catch(e) {
+    showToast('❌ שגיאה במחיקה');
+  }
+}
+
+// ==========================================
+// FIREBASE — SETTINGS
+// ==========================================
+async function saveSettingsToFirebase() {
+  try {
+    await setDoc(doc(db, 'classes', CLASS_ID, 'data', 'settings'), settings);
+  } catch(e) {
+    localStorage.setItem(STORAGE.SETTINGS, JSON.stringify(settings));
+  }
+}
+
+async function loadSettingsFromFirebase() {
+  try {
+    const snap = await getDoc(doc(db, 'classes', CLASS_ID, 'data', 'settings'));
+    if (snap.exists()) {
+      settings = { ...settings, ...snap.data() };
+    } else {
+      const local = localStorage.getItem(STORAGE.SETTINGS);
+      if (local) settings = { ...settings, ...JSON.parse(local) };
+    }
+  } catch(e) {
+    const local = localStorage.getItem(STORAGE.SETTINGS);
+    if (local) settings = { ...settings, ...JSON.parse(local) };
+  }
+  document.getElementById('school-name').value = settings.school || '';
+  document.getElementById('city-name').value = settings.city || '';
+  document.getElementById('class-name').value = settings.className || '';
+  document.getElementById('teacher-name').value = settings.teacherName || '';
+  const types = ['שעות בי״ס', 'צהרון', 'כללי'];
+  types.forEach((t, i) => {
+    document.getElementById('type-' + i).classList.toggle('active', t === settings.frameType);
+  });
+  updateHeader();
+}
+
+// ==========================================
+// INIT AFTER LOGIN
+// ==========================================
+async function initApp() {
+  setSyncStatus('syncing');
+  await loadSettingsFromFirebase();
+  await loadStudentsFromFirebase();
+  await loadHistoryFromFirebase();
+  listenToStudents();
+  setSyncStatus('ok');
+}
 
 // ==========================================
 // PIN SYSTEM
@@ -361,9 +558,7 @@ function pinPress(num) {
   if (pinBuffer.length >= 4) return;
   pinBuffer += num;
   updatePinDots();
-  if (pinBuffer.length === 4) {
-    setTimeout(() => checkPin(), 100);
-  }
+  if (pinBuffer.length === 4) setTimeout(() => checkPin(), 100);
 }
 
 function pinDel() {
@@ -380,7 +575,6 @@ function updatePinDots() {
 function checkPin() {
   const savedPin = localStorage.getItem(STORAGE.PIN);
   if (!savedPin) {
-    // הגדרה ראשונה
     localStorage.setItem(STORAGE.PIN, pinBuffer);
     showToast('✅ קוד הוגדר!');
     unlockApp();
@@ -408,6 +602,7 @@ function showPinSetup() {
 function unlockApp() {
   document.getElementById('pin-screen').classList.add('hidden');
   document.getElementById('app').style.display = 'block';
+  initApp();
 }
 
 function logout() {
@@ -423,11 +618,9 @@ function changePin() {
   const newPin = document.getElementById('new-pin').value;
   const confirmPin = document.getElementById('confirm-pin').value;
   const savedPin = localStorage.getItem(STORAGE.PIN);
-
   if (oldPin !== savedPin) { showToast('❌ קוד נוכחי שגוי'); return; }
   if (newPin.length !== 4 || !/^\d{4}$/.test(newPin)) { showToast('⚠️ קוד חייב להיות 4 ספרות'); return; }
   if (newPin !== confirmPin) { showToast('⚠️ הקודים לא תואמים'); return; }
-
   localStorage.setItem(STORAGE.PIN, newPin);
   document.getElementById('old-pin').value = '';
   document.getElementById('new-pin').value = '';
@@ -438,26 +631,13 @@ function changePin() {
 // ==========================================
 // SETTINGS
 // ==========================================
-function loadSettings() {
-  const saved = localStorage.getItem(STORAGE.SETTINGS);
-  if (saved) settings = { ...settings, ...JSON.parse(saved) };
-  document.getElementById('school-name').value = settings.school || '';
-  document.getElementById('city-name').value = settings.city || '';
-  document.getElementById('class-name').value = settings.className || '';
-  document.getElementById('teacher-name').value = settings.teacherName || '';
-  const types = ['שעות בי״ס', 'צהרון', 'כללי'];
-  types.forEach((t, i) => {
-    document.getElementById('type-' + i).classList.toggle('active', t === settings.frameType);
-  });
-  updateHeader();
-}
-
 function saveSettings() {
   settings.school = document.getElementById('school-name').value;
   settings.city = document.getElementById('city-name').value;
   settings.className = document.getElementById('class-name').value;
   settings.teacherName = document.getElementById('teacher-name').value;
-  localStorage.setItem(STORAGE.SETTINGS, JSON.stringify(settings));
+  clearTimeout(syncTimeout);
+  syncTimeout = setTimeout(() => saveSettingsToFirebase(), 1500);
   updateHeader();
 }
 
@@ -479,27 +659,9 @@ function updateHeader() {
 // ==========================================
 // STUDENTS
 // ==========================================
-function loadStudents() {
-  const saved = localStorage.getItem(STORAGE.STUDENTS);
-  if (saved) {
-    students = JSON.parse(saved);
-  } else {
-    students = [
-      "אופיר גבע","אורן שקד","אולגה איצקוביץ'","איימי גלברג שריג",
-      "איתן צ'נגרי","אלכס טוויסטר","אלמה נגר","אמילי קלוגמן",
-      "אריאל נהור","אריאל פילהבר","אסף שושני","בן מוטיל",
-      "דניאל בירגר","דניאלה צדוק","הראל סברניק טף","לביא קלומידי",
-      "מיכאל אשהר","מיקה לנדה סבן","נוהר כהן","עברי חזות זריהן",
-      "עומר בן שושן","רני ברעם","רוני רוסו","ריו ארנון",
-      "ריין חוגג","רפאל מור","תום פרץ"
-    ].sort((a,b) => a.localeCompare(b,'he')).map(name => ({ name, present: true }));
-    saveStudents();
-  }
-  render();
-}
-
 function saveStudents() {
-  localStorage.setItem(STORAGE.STUDENTS, JSON.stringify(students));
+  clearTimeout(syncTimeout);
+  syncTimeout = setTimeout(() => saveStudentsToFirebase(), 800);
 }
 
 function render() {
@@ -524,8 +686,8 @@ function render() {
   document.getElementById('n-absent').textContent = absent;
 }
 
-function toggle(i) { students[i].present = !students[i].present; render(); }
-function markAll(val) { students = students.map(s => ({ ...s, present: val })); render(); }
+function toggle(i) { students[i].present = !students[i].present; render(); saveStudents(); }
+function markAll(val) { students = students.map(s => ({ ...s, present: val })); render(); saveStudents(); }
 
 function addStudent() {
   const input = document.getElementById('new-name');
@@ -640,7 +802,6 @@ function buildAttMsg() {
 }
 
 function showAttSummary() {
-  // שמור בהיסטוריה
   saveToHistory();
   document.getElementById('att-msg').textContent = buildAttMsg();
   const card = document.getElementById('att-summary');
@@ -651,18 +812,10 @@ function showAttSummary() {
 // ==========================================
 // HISTORY
 // ==========================================
-function loadHistory() {
-  const saved = localStorage.getItem(STORAGE.HISTORY);
-  history = saved ? JSON.parse(saved) : [];
-  renderHistory();
-}
-
 function saveToHistory() {
   const present = students.filter(s => s.present).map(s => s.name);
   const absent = students.filter(s => !s.present).map(s => s.name);
-  // הסר רשומה קיימת של היום
-  history = history.filter(h => h.date !== dateKey);
-  history.unshift({
+  const entry = {
     date: dateKey,
     dateDisplay: dateStr,
     className: settings.className || '',
@@ -670,10 +823,11 @@ function saveToHistory() {
     absent: absent.length,
     total: students.length,
     absentNames: absent
-  });
-  // שמור עד 60 ימים
-  if (history.length > 60) history = history.slice(0, 60);
-  localStorage.setItem(STORAGE.HISTORY, JSON.stringify(history));
+  };
+  history = history.filter(h => h.date !== dateKey);
+  history.unshift(entry);
+  history = history.slice(0, 60);
+  saveHistoryToFirebase(entry);
   renderHistory();
 }
 
@@ -700,10 +854,7 @@ function renderHistory() {
 
 function clearHistory() {
   if (!confirm('למחוק את כל ההיסטוריה?')) return;
-  history = [];
-  localStorage.removeItem(STORAGE.HISTORY);
-  renderHistory();
-  showToast('🗑 ההיסטוריה נמחקה');
+  clearHistoryFromFirebase();
 }
 
 // ==========================================
@@ -828,12 +979,35 @@ function showToast(msg) {
 }
 
 // ==========================================
+// EXPOSE GLOBALS
+// ==========================================
+window.pinPress = pinPress;
+window.pinDel = pinDel;
+window.showPinSetup = showPinSetup;
+window.switchTab = switchTab;
+window.toggle = toggle;
+window.markAll = markAll;
+window.addStudent = addStudent;
+window.delStudent = delStudent;
+window.showAttSummary = showAttSummary;
+window.shareMsg = shareMsg;
+window.copyMsg = copyMsg;
+window.handleImage = handleImage;
+window.extractNames = extractNames;
+window.exportStudents = exportStudents;
+window.importStudents = importStudents;
+window.buildEarlySummary = buildEarlySummary;
+window.toggleEarly = toggleEarly;
+window.clearHistory = clearHistory;
+window.logout = logout;
+window.changePin = changePin;
+window.saveSettings = saveSettings;
+window.setType = setType;
+
+// ==========================================
 // INIT
 // ==========================================
 initPin();
-loadSettings();
-loadStudents();
-loadHistory();
 </script>
 </body>
 </html>
